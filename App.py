@@ -1,6 +1,6 @@
 import shutil
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread
 from PyQt6.QtWidgets import QApplication, QSplitter, QWidget
 
 import pyvista as pv
@@ -25,19 +25,23 @@ class App(QApplication):
 
     def __init__(self,args):
         super().__init__(args)
+
+
         self.machine = Machine()
         self.control_area = ControlArea()
         self.simulation_area = SimArea()
         self.terminal = Terminal()
         self.parser = Parser()
+        self.parse_thread = QThread()
 
         self.control_area.jog_requested.connect(self.machine.jog)
         self.control_area.reset_requested.connect(self.machine.home_axis)
         self.control_area.move_requested.connect(self.machine.move_to)
         self.machine.position_changed.connect(self.simulation_area.move_head)
         self.machine.position_changed.connect(self.control_area.set_position)
-        self.control_area.send_file.connect(self.parser.parse_file)
-        self.parser.finished_parse.connect(self.control_area.file_parsed)
+        self.control_area.send_file.connect(self.parser.start_parse)
+        self.parser.label_update.connect(self.control_area.update_loading_label)
+        self.parser.finished_parse.connect(self.control_area.handle_parsed_data)
         self.control_area.stop_requested.connect(self.machine.stop)
 
 
@@ -68,12 +72,11 @@ class App(QApplication):
         self.split_vertical.resize(1000, 600)
         self.split_vertical.show()
 
-        self.aboutToQuit.connect(
-            lambda: shutil.rmtree(
-                self.control_area.import_folder,
-                ignore_errors=True
-            )
-        )
+        self.parser.moveToThread(self.parse_thread)
+        self.parse_thread.start()
+
+        self.aboutToQuit.connect(self.clean_up)
+
         self.split_vertical.setHandleWidth(6)  # thickness in pixels
         self.split_vertical.setStyleSheet("""
                QSplitter::handle {
@@ -83,5 +86,10 @@ class App(QApplication):
                    background-color: #4a90d9;
                }
            """)
-
+    def clean_up(self):
+        self.parse_thread.quit()
+        shutil.rmtree(
+            self.control_area.import_folder,
+            ignore_errors=True
+        )
 

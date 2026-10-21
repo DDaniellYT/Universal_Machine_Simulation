@@ -5,10 +5,10 @@ from PyQt6.QtCore import pyqtSignal, QObject, QElapsedTimer, QTimer
 
 
 class Machine(QObject):
-    position_changed = pyqtSignal(float,float,float)
+    position_changed = pyqtSignal(list)
     move_finished = pyqtSignal()
 
-    speed = 100
+    speed = 1000
 
     view_handler = ...
     head_mesh = pv.read("./Simulation_STL/Head_Simulation.STL")
@@ -28,7 +28,7 @@ class Machine(QObject):
         if step >= dist:                                          # close enough: arrive exactly
             self.pos = list(self.target_queue[0])
             self.timer.stop()
-            self.position_changed.emit(*self.pos)
+            self.position_changed.emit(self.pos)
             del self.target_queue[0]
             self.move_finished.emit()
             print("finished timerd")
@@ -41,22 +41,23 @@ class Machine(QObject):
                 self.target = list(self.pos)
         else:                                                     # move toward the target
             self.pos = [p + d / dist * step for p, d in zip(self.pos, delta)]
-            self.position_changed.emit(*self.pos)
+            self.position_changed.emit(self.pos)
 
     def jog(self, axis, step):  # key presses connect here
         t = list(self.target)
         t["XYZ".index(axis)] += step  # add to the TARGET, not the current position
-        self.move_to(*t)
+        self.move_to(t)
 
     def home_axis(self, axis):  # axis reset
         t = list(self.target)
         print(axis)
         t["XYZ".index(axis)] = 0.0
         print("hit reset in home_axis func")
-        self.move_to(*t)
+        print(t)
+        self.move_to(t)
 
-    def move_to(self, x,y,z):
-        new_target = [x, y, z]
+    def move_to(self,info):
+        new_target = info
         self.target_queue.append(new_target)
         self.target = list(new_target)
         if not self.timer.isActive():

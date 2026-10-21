@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QWidget, QPushButton, QFileDialog, QLabel, QVBoxLayo
 class ControlArea(QWidget):
     jog_requested = pyqtSignal(str, float)
     reset_requested = pyqtSignal(str)
-    move_requested = pyqtSignal(float,float,float)
+    move_requested = pyqtSignal(list)
     send_file = pyqtSignal(str)
     stop_requested = pyqtSignal()
 
@@ -34,20 +34,23 @@ class ControlArea(QWidget):
             self.jog_requested.emit("Z", 5)
         if event.key() == Qt.Key.Key_R:
             print("emmited reset ")
-            self.move_requested.emit(self.pos[0],self.pos[1],100)
+            self.move_requested.emit(self.pos[0],self.pos[1],100,0)
             self.reset_requested.emit("X")
             self.reset_requested.emit("Y")
             self.reset_requested.emit("Z")
         if event.key() == Qt.Key.Key_Escape:
             self.stop_requested.emit()
 
-    def set_position(self,x,y,z):
-        self.pos = (x,y,z)
+    def set_position(self,info):
+        self.pos = info
         print("setted pos")
 
     def __init__(self):
         super().__init__()
-        self.pos = [0,0,0]
+
+        self.gcode = []
+
+        self.pos = [0,0,0,0]
         self.timer = QTimer(self)
         self.clock = QElapsedTimer()
 
@@ -69,23 +72,22 @@ class ControlArea(QWidget):
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-    def file_parsed(self,str):
-        print(str[0])
-        if len(str) > 3:
-            self.gcode = str[0]
-            self.file_label.setText("can start sequence")
-        else:
-            self.file_label.setText(f"processing {str[0]}")
+    def update_loading_label(self, dots_text):
+        self.file_label.setText(f"Parsing{dots_text}")
+
+    def handle_parsed_data(self, gcode_list):
+        self.gcode = gcode_list
+        print(f"Done! Received {len(gcode_list)} coordinates.")
 
     def queue_gcode(self):
         print("emmited reset ")
-        self.move_requested.emit(self.pos[0], self.pos[1], 100)
+        self.move_requested.emit([self.pos[0], self.pos[1], 100,0])
         self.reset_requested.emit("X")
         self.reset_requested.emit("Y")
         self.reset_requested.emit("Z")
         print("started gcode")
         for pos in self.gcode:
-            self.move_requested.emit(pos[0],pos[1],pos[2])
+            self.move_requested.emit(pos)
 
     def import_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -95,7 +97,6 @@ class ControlArea(QWidget):
             "All files (*.*)"
         )
 
-        # User cancelled the dialog
         if not file_path:
             return
 
