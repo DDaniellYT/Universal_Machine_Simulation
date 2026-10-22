@@ -8,10 +8,7 @@ class Machine(QObject):
     position_changed = pyqtSignal(list)
     move_finished = pyqtSignal()
 
-    speed = 1000
-
-    view_handler = ...
-    head_mesh = pv.read("./Simulation_STL/Head_Simulation.STL")
+    speed = 10000
 
     def stop(self):
         print("stopped")
@@ -75,6 +72,6 @@ class Machine(QObject):
         self.target = [0, 0, 0]
         self.pos = [0, 0, 0]
 
-        self.timer.setInterval(16)  # about 60 updates a second
+        self.timer.setInterval(1)  # 16 is about 60 updates a second
         self.timer.timeout.connect(self._step)
         super().__init__()

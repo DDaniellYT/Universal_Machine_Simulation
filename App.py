@@ -44,10 +44,15 @@ class App(QApplication):
         self.parser.finished_parse.connect(self.control_area.handle_parsed_data)
         self.control_area.stop_requested.connect(self.machine.stop)
 
-
         head_mesh = pv.read("./Simulation_STL/Head_Simulation.STL")
-        self.simulation_area.add_head(head_mesh)
+        beam_x = pv.read("./Simulation_STL/beam_x.STL")
+        beam_y = pv.read("./Simulation_STL/beam_x.STL")
+        bed = pv.read("./Simulation_STL/bed.STL")
 
+        self.simulation_area.add_head(head_mesh)
+        self.simulation_area.add_beam(beam_x,"x")
+        self.simulation_area.add_beam(beam_y,"y")
+        self.simulation_area.add_bed(bed)
 
         self.split_horizontal = QSplitter(Qt.Orientation.Horizontal)
         self.split_horizontal.addWidget(self.control_area)
